@@ -14,7 +14,7 @@ The standalone repository was created empty, rather than through GitHub's fork o
 
 ## Project identity
 
-`README.md` and `CONTRIBUTING.md` describe this project and link to its own issues, source, roadmap and architecture. GitHub CODEOWNERS and issue/PR templates route work here. Codex-assisted development follows `AGENTS.md` and requires human review and meaningful verification.
+`README.md` and `CONTRIBUTING.md` describe this project and link to its own issues, source, roadmap and architecture. GitHub CODEOWNERS, issue/PR templates and community moderation policy route work here. The adapted Code of Conduct retains its original attribution. Codex-assisted development follows `AGENTS.md` and requires human review and meaningful verification.
 
 `Resources/manifest.yml` sets the client window/game title to **Persistent Space City**. Existing logo/icon/splash artwork remains credited upstream artwork; custom visual branding is a later task. `space-city.server.toml` sets the development server name, stable server identity, admin-log name and project links. Use the project launch scripts to load this configuration; the original generic launch scripts and original server presets remain technical references and do not automatically load it.
 
