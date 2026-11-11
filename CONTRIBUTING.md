@@ -1,11 +1,9 @@
-# Space Station 14 Contributing Guidelines
+# Contributing to Persistent Space City
 
-Thanks for contributing to Space Station 14.
-When contributing, be sure to follow our [codebase conventions](https://docs.spacestation14.com/en/general-development/codebase-info/codebase-organization.html) and [PR guidelines](https://docs.spacestation14.com/en/general-development/codebase-info/pull-request-guidelines.html).
+Submit issues and pull requests to https://github.com/Chaunsy19/persistent-space-city-standalone. Target `main`. This project is maintained independently of Space Wizards; do not send its changes or feature requests to the original project's repository or community channels.
 
-Following these guidelines helps us increase review turnaround time, so be sure to review the linked documents in full.
+Read `AGENTS.md` and `docs/space-city/` first. Work on the currently approved milestone only. Milestone 1 requires owner approval. Codex-assisted development is part of this project's workflow; contributors remain responsible for reviewing changes, verifying behavior and preserving licenses and attribution.
 
-The last major guidelines update was on **December 6th, 2025**.
+Use existing SS14 ECS, HTN, interaction and networking patterns. Keep custom content separate where practical, keep NPC decisions authoritative on the server, and avoid engine edits or incidental dependency upgrades. Describe the behavior changed, the reason, meaningful verification and any remaining limitations. Never include credentials, runtime databases or generated build/log files.
 
-### Why is this here?
-We put this here so that GitHub will notify you when submitting a pull request that the PR guidelines have changed, if you haven't read the latest version.
+Build with `dotnet build SpaceStation14.slnx` after meaningful code changes and use focused behavior/integration tests when needed. Record architectural decisions and milestone results in the project documentation. Preserve original license notices and asset metadata.

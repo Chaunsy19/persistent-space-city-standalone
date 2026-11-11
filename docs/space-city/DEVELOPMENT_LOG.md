@@ -1,5 +1,7 @@
 # Milestone 0 development log
 
+Current repository: [Chaunsy19/persistent-space-city-standalone](https://github.com/Chaunsy19/persistent-space-city-standalone), an independent repository with default branch `main`. The original setup record below describes the earlier fork; see the independence update at the end for current Git and launch instructions.
+
 Date: 2026-11-11 (America/Los_Angeles). **Milestone 0 completion criteria verified. Milestone 1 has not begun and requires owner approval.**
 
 ## Foundation established
@@ -57,13 +59,13 @@ dotnet build SpaceStation14.slnx --no-restore
 For a new test session, stop the existing test processes first to avoid a port conflict. Open two PowerShell consoles in the checkout. In the first:
 
 ```powershell
-dotnet run --project Content.Server --no-build --no-restore -- --data-dir .space-city-local/server --cvar net.bindto=127.0.0.1 --cvar hub.advertise=false
+.\run-space-city-server.ps1
 ```
 
 After the server reports Ready, in the second:
 
 ```powershell
-dotnet run --project Content.Client --no-build --no-restore -- --self-contained --username CityDev --connect --connect-address ss14://127.0.0.1:1212
+.\run-space-city-client.ps1
 ```
 
 These use the same official `Content.Server`/`Content.Client` development entry points as `runserver.bat`/`runclient.bat`, with flags for local binding, isolated data and automatic connection. Alternatively launch the client normally and use Direct Connect to `127.0.0.1:1212`. On the unmodified Debug setup, the Sandbox map spawned the test player automatically and granted local host administration; this is development behavior, not a production access policy. Close the client normally; for a server launched in your own console, use its `shutdown` command and wait for exit. Rebuild after code changes before using `--no-build`.
@@ -84,3 +86,15 @@ Use existing assemblies with `_SpaceCity` folders when custom work begins. Exten
 Changes: `.gitignore` (local runtime data only), `AGENTS.md`, `docs/space-city/PROJECT_VISION.md`, `ARCHITECTURE.md`, `ROADMAP.md`, and this log. The parent workspace `README.md` points future sessions to the actual game checkout. Official setup generated ignored hook/version/build artifacts. No C# or prototype gameplay files were changed; no custom gameplay directories were created.
 
 Recommended next action: review these notes, then explicitly approve Milestone 1. Its first increment should be one server-controlled humanoid that navigates through an authorized door and performs a real item interaction using existing HTN, with clear blocked-path/cancellation behavior. Verify it from two clients before expanding to needs or professions. Do not start that implementation automatically.
+
+## Milestone 0 update — standalone ownership and project identity
+
+Authorized by the owner on 2026-11-11 after reviewing the independence recommendation. Created `Chaunsy19/persistent-space-city-standalone` as a new public repository, preserving `Chaunsy19/persistent-space-city` without modification. GitHub reports `fork: false` and no parent. Local `origin` points exclusively to the standalone repository; the content `upstream` remote was removed. `main` is the project branch and `milestone-0` identifies the completed foundation. Source history and the original Milestone 0 commit remain in ancestry.
+
+Updated README, contribution guidelines, GitHub CODEOWNERS and issue/PR templates to this project's destinations. Updated the manifest title to Persistent Space City and added `space-city.server.toml` plus two project launch scripts. New configuration gives the server its project name/links and binds both UDP game traffic and HTTP status API to loopback, with UPnP/hub advertising disabled. Existing engine submodules, license notices, credits, artwork and gameplay remain unchanged. Inherited Actions are disabled at repository level; their original workflow files remain for reference. See `INDEPENDENCE.md` for details and direct launch equivalents.
+
+Verification: both PowerShell scripts parsed successfully; Python TOML validation confirmed project links and local-only settings; full solution rebuild passed with **896 warnings, zero errors**, elapsed **00:00:44.07**. An initial rebuild failed because the original test server held DLLs open; its exact executable path was verified before stopping it, then the rebuild passed. No source/compiler errors remained.
+
+Executed both new launch scripts against isolated test data on loopback port 1213, overriding both game port and status binding. Server reached Ready; `/status` reported `Persistent Space City — Development`; `/info` exposed the standalone repository/documentation links. OS socket queries verified both UDP and TCP listeners were `127.0.0.1:1213`. The headless verification client received a full game state, reached InGame and attached to a player entity. This update did not repeat graphical rendering verification; window-title configuration was checked directly, while the original milestone includes a graphical connection test.
+
+Local evidence: `milestone0-independence-build.log` (initial lock failure), `milestone0-independence-build-retry.log` (successful rebuild), `milestone0-independence-server.log` and `milestone0-independence-client.log`. These remain ignored. Temporary verification processes were stopped after testing; use the new scripts for the next normal development session. No production hosting or gameplay milestone was started.

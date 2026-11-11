@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Request a Feature
-    url: https://discord.gg/rGvu9hKffJ
-    about: Submit feature requests on our Discord server (https://discord.gg/rGvu9hKffJ).
+  - name: Project roadmap
+    url: https://github.com/Chaunsy19/persistent-space-city-standalone/blob/main/docs/space-city/ROADMAP.md
+    about: Check the current milestone before requesting a feature. Report issues in this repository.

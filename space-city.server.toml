@@ -1,0 +1,29 @@
+# Persistent Space City local development configuration.
+# Used by run-space-city-server.ps1; no public hosting is configured.
+[net]
+bindto = "127.0.0.1"
+port = 1212
+upnp = false
+
+[status]
+bind = "127.0.0.1:1212"
+
+[game]
+hostname = "Persistent Space City — Development"
+desc = "An independent multiplayer space-city simulation. Milestone 0 development build."
+
+[server]
+id = "persistent-space-city-development"
+
+[hub]
+advertise = false
+hub_urls = ""
+
+[infolinks]
+github = "https://github.com/Chaunsy19/persistent-space-city-standalone"
+website = "https://github.com/Chaunsy19/persistent-space-city-standalone"
+wiki = "https://github.com/Chaunsy19/persistent-space-city-standalone/tree/main/docs/space-city"
+bug_report = "https://github.com/Chaunsy19/persistent-space-city-standalone/issues"
+
+[adminlogs]
+server_name = "persistent-space-city-development"
