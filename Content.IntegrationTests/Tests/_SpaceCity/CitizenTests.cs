@@ -3,6 +3,7 @@ using Content.IntegrationTests.Fixtures;
 using Content.IntegrationTests.Fixtures.Attributes;
 using Content.Shared.CCVar;
 using Content.Server._SpaceCity.Citizens;
+using Content.Server._SpaceCity.Work;
 using Content.Server.NPC.Components;
 using Content.Shared.Access.Components;
 using Content.Shared.Access.Systems;
@@ -10,6 +11,10 @@ using Content.Shared.Doors.Components;
 using Content.Shared.Gravity;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Inventory;
+using Content.Shared.Interaction.Components;
+using Content.Shared.Storage;
+using Content.Shared.Storage.EntitySystems;
+using Robust.Shared.Containers;
 using Robust.Shared.GameObjects;
 using Robust.Shared.Map;
 using Robust.Shared.Maths;
@@ -20,7 +25,7 @@ namespace Content.IntegrationTests.Tests._SpaceCity;
 
 /// <summary>Real server HTN/steering/physics/hands, with no attached player driving the citizen.</summary>
 [TestFixture]
-public sealed class CitizenTests : GameTest
+public sealed partial class CitizenTests : GameTest
 {
     public override PoolSettings PoolSettings => new() { Connected = false };
 
@@ -187,8 +192,123 @@ public sealed class CitizenTests : GameTest
         await Server.WaitPost(() => Server.System<SharedMapSystem>().DeleteMap(map.MapId));
     }
 
-    [Test]
-    public async Task TwoClientsObserveTheSameDelivery()
+    [TestCase("pocket")]
+    [TestCase("bag")]
+    [TestCase("full")]
+    [TestCase("deleted-target")]
+    [TestCase("blocked-drop")]
+    public async Task CancellationStoresTaskItemOrDropsIt(string mode)
+    {
+        var map = await Arena();
+        EntityUid citizen = default, item = default, destination = default, bag = default, spare = default;
+        var pocketFillers = new EntityUid[2];
+        await Server.WaitAssertion(() =>
+        {
+            var coordinates = new EntityCoordinates(map.Grid, 0.5f, 0.5f);
+            citizen = SEntMan.SpawnAttachedTo("SpaceCityCitizen", coordinates);
+            item = SEntMan.SpawnAttachedTo("Pen", coordinates.Offset(new Vector2(1, 0)));
+            destination = SEntMan.SpawnAttachedTo("SpaceCityDestination", coordinates.Offset(new Vector2(9, 0)));
+            var inventory = Server.System<InventorySystem>();
+            if (mode != "pocket")
+            {
+                for (var i = 0; i < 2; i++)
+                {
+                    pocketFillers[i] = SEntMan.SpawnAttachedTo("Pen", coordinates);
+                    Assert.That(inventory.TryEquip(citizen, pocketFillers[i], $"pocket{i + 1}", silent: true), Is.True);
+                }
+                bag = SEntMan.SpawnAttachedTo("ClothingBackpack", coordinates);
+                Assert.That(inventory.TryEquip(citizen, bag, "back", silent: true), Is.True);
+                if (mode is "full" or "deleted-target")
+                {
+                    var storage = Server.System<SharedStorageSystem>();
+                    for (var count = 0; count < 128; count++)
+                    {
+                        var filler = SEntMan.SpawnAttachedTo("Pen", coordinates);
+                        if (!storage.CanInsert(bag, filler, out _))
+                        {
+                            SEntMan.DeleteEntity(filler);
+                            break;
+                        }
+                        Assert.That(storage.Insert(bag, filler, out _), Is.True);
+                    }
+                    Assert.That(storage.CanInsert(bag, item, out _), Is.False, "Fixture backpack was not full");
+                }
+            }
+            Assert.That(Server.System<SpaceCityCitizenSystem>().Assign(citizen, destination, item, out _), Is.True);
+        });
+
+        var carrying = false;
+        for (var i = 0; i < 120 && !carrying; i++)
+        {
+            await Pair.RunTicksSync(1);
+            await Server.WaitPost(() => carrying = SEntMan.GetComponent<SpaceCityCitizenComponent>(citizen).Carrying);
+        }
+        await Server.WaitAssertion(() =>
+        {
+            Assert.That(carrying, Is.True, "Citizen never reached the carrying phase");
+            Assert.That(Server.System<SharedHandsSystem>().IsHolding(citizen, item), Is.True);
+            // Unrelated hand contents must never be put away in place of the task item.
+            spare = SEntMan.SpawnAttachedTo("Screwdriver", SEntMan.GetComponent<TransformComponent>(citizen).Coordinates);
+            Assert.That(Server.System<SharedHandsSystem>().TryPickupAnyHand(citizen, spare), Is.True);
+            if (mode == "blocked-drop")
+                SEntMan.AddComponent<UnremoveableComponent>(item).DeleteOnDrop = false;
+            if (mode == "deleted-target")
+                SEntMan.DeleteEntity(destination);
+            else
+                Server.System<SpaceCityCitizenSystem>().Stop(citizen, true);
+        });
+        await RunFor(1);
+        await Server.WaitAssertion(() =>
+        {
+            var hands = Server.System<SharedHandsSystem>();
+            var inventory = Server.System<InventorySystem>();
+            var containers = Server.System<SharedContainerSystem>();
+            var state = SEntMan.GetComponent<SpaceCityCitizenComponent>(citizen);
+            Assert.That(hands.IsHolding(citizen, spare), Is.True, "Cleanup touched an unrelated held tool");
+            Assert.That(SEntMan.EntityExists(item), Is.True, "Cleanup deleted the item");
+            Assert.That(state.CurrentTask, Is.Null);
+            if (mode == "pocket")
+            {
+                Assert.That(inventory.TryGetSlotEntity(citizen, "pocket1", out var stored), Is.True);
+                Assert.That(stored, Is.EqualTo(item));
+                Assert.That(hands.IsHolding(citizen, item), Is.False);
+            }
+            else
+            {
+                for (var i = 0; i < 2; i++)
+                {
+                    Assert.That(inventory.TryGetSlotEntity(citizen, $"pocket{i + 1}", out var existing), Is.True);
+                    Assert.That(existing, Is.EqualTo(pocketFillers[i]), "Cleanup replaced a pocket occupant");
+                }
+                if (mode == "bag")
+                {
+                    Assert.That(SEntMan.GetComponent<StorageComponent>(bag).Container.Contains(item), Is.True);
+                    Assert.That(hands.IsHolding(citizen, item), Is.False);
+                }
+                else if (mode == "blocked-drop")
+                {
+                    Assert.That(hands.IsHolding(citizen, item), Is.True);
+                    Assert.That(state.LastResult, Does.Contain("rejected cleanup"));
+                }
+                else
+                {
+                    Assert.That(hands.IsHolding(citizen, item), Is.False);
+                    Assert.That(containers.IsEntityInContainer(item), Is.False);
+                    var itemCoordinates = SEntMan.GetComponent<TransformComponent>(item).Coordinates;
+                    Assert.That(itemCoordinates.TryDistance(SEntMan, SEntMan.GetComponent<TransformComponent>(citizen).Coordinates, out var distance), Is.True);
+                    Assert.That(distance, Is.LessThan(1f));
+                    Assert.That(state.LastResult, Does.Contain("dropped at citizen's feet"));
+                    if (mode == "deleted-target")
+                        Assert.That(state.FailedTasks, Is.EqualTo(1));
+                }
+            }
+        });
+        await Server.WaitPost(() => Server.System<SharedMapSystem>().DeleteMap(map.MapId));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task TwoClientsObserveTheSameDelivery(bool autonomous)
     {
         var map = await Arena();
         await Pair.Connect();
@@ -231,7 +351,17 @@ public sealed class CitizenTests : GameTest
         });
         for (var i = 0; i < 20; i++)
             await Pump(5);
-        await Server.WaitAssertion(() => Assert.That(Server.System<SpaceCityCitizenSystem>().Assign(citizen, destination, item, out var reason), Is.True, reason));
+        EntityUid orderUid = default;
+        await Server.WaitAssertion(() =>
+        {
+            if (autonomous)
+            {
+                Server.System<SpaceCityGoalSelectorSystem>().SetEnabled(citizen, true);
+                Assert.That(Server.System<SpaceCityWorkOrderSystem>().TryCreate(item, destination, 2, out orderUid, out var reason), Is.True, reason);
+            }
+            else
+                Assert.That(Server.System<SpaceCityCitizenSystem>().Assign(citizen, destination, item, out var reason), Is.True, reason);
+        });
 
         var held = new bool[2];
         var opened = new bool[2];
@@ -259,6 +389,8 @@ public sealed class CitizenTests : GameTest
         }
 
         await Server.WaitAssertion(() => Assert.That(SEntMan.GetComponent<SpaceCityCitizenComponent>(citizen).CompletedTasks, Is.EqualTo(1)));
+        if (autonomous)
+            await Server.WaitAssertion(() => Assert.That(SEntMan.GetComponent<SpaceCityWorkOrderComponent>(orderUid).Status, Is.EqualTo(SpaceCityWorkStatus.Completed)));
         for (var index = 0; index < 2; index++)
         {
             Assert.That(held[index], Is.True, $"Client {index} never received held-item state");

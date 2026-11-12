@@ -10,6 +10,7 @@
   - type: Loadout
     prototypes: [SpaceCityCitizenGear]
   - type: SpaceCityCitizen
+  - type: SpaceCityAutonomy
   - type: HTN
     constantlyReplan: false
     blackboard:
