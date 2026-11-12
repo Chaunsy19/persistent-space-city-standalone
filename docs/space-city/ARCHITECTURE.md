@@ -1,6 +1,6 @@
 # Architecture investigation and recommendations
 
-Inspected 2026-11-11 against SS14 `9ccfa8d118307aced564fa824d6ad5b9e217847a`, RobustToolbox `d56b0d0bcf94c76bef7fc18625bf226607dca092`. Paths below are repository-relative unless prefixed with `RobustToolbox/`. Findings describe source inspection; future designs are explicitly recommendations. No gameplay implementation accompanies this document.
+Initially inspected 2026-11-11 against SS14 `9ccfa8d118307aced564fa824d6ad5b9e217847a`, RobustToolbox `d56b0d0bcf94c76bef7fc18625bf226607dca092`. Paths are repository-relative unless prefixed with `RobustToolbox/`. The investigation below records the Milestone 0 baseline; the implemented Milestone 1 extension is described at the end. Future designs remain recommendations.
 
 ## Repository and dependency map
 
@@ -114,3 +114,17 @@ Required round-trip fixtures: constructed tiles/walls; powered/connected machine
 - [Pinned RobustToolbox serializer](https://github.com/space-wizards/RobustToolbox/tree/d56b0d0bcf94c76bef7fc18625bf226607dca092/Robust.Shared/EntitySerialization)
 
 Local source at these revisions is the primary basis of this investigation. Recheck paths/APIs when updating upstream.
+
+## Milestone 1 implementation
+
+`Resources/Prototypes/_SpaceCity/citizen.yml` defines `SpaceCityCitizen` (inherits `MobCivilian` -> `MobHuman`), normal randomized human appearance, civilian clothes/passenger ID, `SpaceCityDestination`, a real crowbar-derived test item, and the root HTN compound. No upstream prototypes or engine source were changed.
+
+`Content.Server/_SpaceCity/Citizens` contains a server-only component, system, HTN operator and debug admin command. The existing HTN scheduler executes one small delivery operator. Its per-entity state selects explicitly assigned tasks from a bounded queue, approaches an item through `NPCSteeringSystem`, checks range/line of sight/container accessibility, calls `SharedHandsSystem.TryPickupAnyHand`, confirms actual hand ownership, navigates to a destination, calls the normal `TryDrop` and verifies release. The operator stays active while idle; HTN replanning is disabled for this fixed demo. No new planner, pathfinder, network messages, physics or inventory model was added.
+
+This narrow coordinator is the bridge around upstream steering/hands APIs: the generic pickup operator alone does not enforce interaction reach, and generic operators do not provide this demo's task-level deadline, postcondition reporting and bounded recovery. Steering still obtains its paths from the original engine-integrated graph/pathfinding systems. `NavInteract` is enabled; prying, smashing and climbing are not enabled. Door permissions are checked by existing access/door systems against actual carried/worn access items, not a citizen-only access flag.
+
+Tasks are explicit entity references on one grid, with at most eight waiting tasks. The coordinator runs substantive work every 0.25 seconds through HTN rather than adding a global entity scan/update loop. Each navigation leg allows two attempts by default (clamped to at most three), with a two-second retry delay, six-second no-progress guard and thirty-second absolute leg deadline. The latter also bounds moving targets and repeated path invalidation. Exhausted/invalid tasks are abandoned once, followed by a two-second idle interval and selection of the next queued task. Engine steering performs its own bounded path retries inside each leg.
+
+All planning/debug state remains server-only. Existing transforms, hands containers, doors, inventory and sprites replicate normally. HTN shutdown/player attachment/incapacitation cancels the demo and retains any held item; a deliberate admin reset resumes assignment when the underlying NPC is awake. Component shutdown unregisters steering (cancelling outstanding path work) and releases task references. Logs cover state transitions/failures, not every update.
+
+`Content.IntegrationTests/Tests/_SpaceCity/CitizenTests.cs` exercises real HTN, navmesh, physics, access, doors and hands, including zero-player operation and two independent client replicas attached to one server. The fixture explicitly enables pathfinding, which the normal test pool disables. Power-independent test airlocks and inherent gravity isolate AI/access behavior from power supply and gravity generators; real powered-airlock failure remains subject to normal simulation. See `MILESTONE_1.md` for commands, evidence and limits.

@@ -1,0 +1,48 @@
+- type: entity
+  parent: MobCivilian
+  id: SpaceCityCitizen
+  name: Space City Citizen
+  description: A civilian testing autonomous navigation and real item delivery.
+  suffix: NPC, Space City
+  components:
+  - type: RandomHumanoidAppearance
+    randomizeName: false
+  - type: Loadout
+    prototypes: [SpaceCityCitizenGear]
+  - type: SpaceCityCitizen
+  - type: HTN
+    constantlyReplan: false
+    blackboard:
+      NavInteract: !type:Bool
+        true
+    rootTask:
+      task: SpaceCityCitizenCompound
+
+- type: startingGear
+  id: SpaceCityCitizenGear
+  equipment:
+    jumpsuit: ClothingUniformJumpsuitColorGrey
+    shoes: ClothingShoesColorBlack
+    id: PassengerIDCard
+
+- type: htnCompound
+  id: SpaceCityCitizenCompound
+  branches:
+  - tasks:
+    - !type:HTNPrimitiveTask
+      operator: !type:SpaceCityCitizenOperator
+
+- type: entity
+  parent: MarkerBase
+  id: SpaceCityDestination
+  name: Space City destination
+  suffix: NPC test
+  components:
+  - type: Sprite
+    state: blue
+
+- type: entity
+  parent: Crowbar
+  id: SpaceCityTestItem
+  name: Space City test item
+  description: A real crowbar used for the citizen delivery test.
