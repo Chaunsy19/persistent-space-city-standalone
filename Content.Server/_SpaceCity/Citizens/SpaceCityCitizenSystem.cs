@@ -3,6 +3,10 @@ using Content.Server.NPC.Pathfinding;
 using Content.Server.NPC.Systems;
 using Content.Shared.Hands.EntitySystems;
 using Content.Shared.Interaction;
+using Content.Shared.ActionBlocker;
+using Content.Shared.Inventory;
+using Content.Shared.Storage;
+using Content.Shared.Storage.EntitySystems;
 using Robust.Shared.Containers;
 using Robust.Shared.Map;
 using Robust.Shared.Timing;
@@ -19,6 +23,9 @@ public sealed partial class SpaceCityCitizenSystem : EntitySystem
     [Dependency] private SharedHandsSystem _hands = default!;
     [Dependency] private SharedInteractionSystem _interaction = default!;
     [Dependency] private SharedContainerSystem _containers = default!;
+    [Dependency] private InventorySystem _inventory = default!;
+    [Dependency] private SharedStorageSystem _storage = default!;
+    [Dependency] private ActionBlockerSystem _actionBlocker = default!;
     [Dependency] private IGameTiming _timing = default!;
 
     public override void Initialize()
@@ -69,13 +76,14 @@ public sealed partial class SpaceCityCitizenSystem : EntitySystem
             return;
 
         _steering.Unregister(uid);
+        var cleanup = PutAwayTaskItem(uid, citizen);
         citizen.Tasks.Clear();
         citizen.CurrentTask = null;
         citizen.Carrying = false;
         citizen.Stopped = stopped;
         citizen.Attempts = 0;
         citizen.Activity = stopped ? CitizenActivity.Stopped : CitizenActivity.Idle;
-        citizen.LastResult = stopped ? "Stopped; any held item is retained" : "Reset; waiting for a new task";
+        citizen.LastResult = (stopped ? "Stopped" : "Reset; waiting for a new task") + cleanup;
         citizen.NextUpdate = _timing.CurTime;
     }
 
@@ -239,6 +247,8 @@ public sealed partial class SpaceCityCitizenSystem : EntitySystem
     private void Finish(EntityUid uid, SpaceCityCitizenComponent citizen, bool success, string result)
     {
         _steering.Unregister(uid);
+        if (!success)
+            result += PutAwayTaskItem(uid, citizen);
         if (success)
             citizen.CompletedTasks++;
         else
@@ -251,6 +261,48 @@ public sealed partial class SpaceCityCitizenSystem : EntitySystem
         if (success)
             Log.Info($"Citizen {ToPrettyString(uid)} completed task: {result}");
         else
-            Log.Warning($"Citizen {ToPrettyString(uid)} abandoned task: {result}; any held item is retained");
+            Log.Warning($"Citizen {ToPrettyString(uid)} abandoned task: {result}");
+    }
+
+    /// <summary>
+    /// Clean up only the active task's item. Never rearrange unrelated hand contents, force
+    /// insertion into a full container, or bypass the actor's normal removal/action checks.
+    /// Successful deliveries still drop at their destination through the ordinary delivery path.
+    /// </summary>
+    private string PutAwayTaskItem(EntityUid uid, SpaceCityCitizenComponent citizen)
+    {
+        if (citizen.CurrentTask?.Item is not { } item || TerminatingOrDeleted(item) ||
+            !_hands.IsHolding(uid, item))
+            return "";
+
+        if (_hands.CanDrop(uid, item) && _actionBlocker.CanInteract(uid, item) &&
+            _inventory.TryGetSlots(uid, out var slots))
+        {
+            foreach (var slot in slots)
+            {
+                if ((slot.SlotFlags & SlotFlags.POCKET) != 0 &&
+                    _inventory.TryEquip(uid, item, slot.Name, silent: true) && !_hands.IsHolding(uid, item))
+                    return $"; task item stored in {slot.Name}";
+            }
+
+            // Only directly worn storage is considered, not bags on the floor or recursive nested bags.
+            foreach (var slot in slots)
+            {
+                if (!_inventory.TryGetSlotEntity(uid, slot.Name, out var worn) ||
+                    !TryComp<StorageComponent>(worn, out var storage) ||
+                    !_interaction.CanAccess(uid, worn.Value) ||
+                    !_storage.CanInsert(worn.Value, item, out _, storage) ||
+                    !_storage.PlayerInsertEntityInWorld((worn.Value, storage), uid, item))
+                    continue;
+
+                if (TerminatingOrDeleted(item) || !_hands.IsHolding(uid, item))
+                    return $"; task item stored in worn {slot.Name} storage";
+            }
+        }
+
+        if (_hands.TryDrop(uid, item) && !_hands.IsHolding(uid, item))
+            return "; task item dropped at citizen's feet";
+
+        return "; task item retained because normal storage/drop checks rejected cleanup";
     }
 }
