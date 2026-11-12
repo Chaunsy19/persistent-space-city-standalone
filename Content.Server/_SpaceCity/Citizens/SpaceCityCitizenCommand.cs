@@ -10,14 +10,22 @@ public sealed partial class SpaceCityCitizenCommand : LocalizedEntityCommands
     [Dependency] private SpaceCityCitizenSystem _citizens = default!;
 
     public override string Command => "spacecity";
-    public override string Description => "Assign, inspect, stop or reset a Space City Citizen.";
+    public override string Description => "Manage Space City citizens and autonomous delivery work.";
     public override string Help => "spacecity task <citizen NetEntity> <destination NetEntity> [item NetEntity]\n" +
                           "spacecity spawn <anchor NetEntity> (creates an idle citizen plus test item and marker nearby)\n" +
                           "spacecity status|stop|reset <citizen NetEntity>\n" +
+                          "spacecity auto <citizen> on|off\nspacecity goal <citizen>\n" +
+                          "spacecity order create <item> <destination> [priority 1..3, default 2]\n" +
+                          "spacecity order list|status <order>|cancel <order>\n" +
                           "Spawn SpaceCityCitizen, SpaceCityDestination and SpaceCityTestItem with F5. IDs are shown in VV.";
 
     public override void Execute(IConsoleShell shell, string argStr, string[] args)
     {
+        if (args.Length > 0 && args[0] == "order")
+        {
+            ExecuteOrder(shell, args);
+            return;
+        }
         if (args.Length == 2 && args[0] == "spawn")
         {
             if (!TryEntity(args[1], out var anchor) ||
@@ -46,6 +54,13 @@ public sealed partial class SpaceCityCitizenCommand : LocalizedEntityCommands
 
         switch (args[0])
         {
+            case "auto" when args.Length == 3 && args[2] is "on" or "off":
+                _goals.SetEnabled(uid, args[2] == "on");
+                WriteGoal(shell, uid);
+                break;
+            case "goal" when args.Length == 2:
+                WriteGoal(shell, uid);
+                break;
             case "task" when args.Length is 3 or 4:
                 if (!TryEntity(args[2], out var destination) ||
                     (args.Length == 4 && !TryEntity(args[3], out _)))
@@ -70,6 +85,7 @@ public sealed partial class SpaceCityCitizenCommand : LocalizedEntityCommands
                 shell.WriteLine($"State={citizen.Activity}, queue={citizen.Tasks.Count}, " +
                                 $"attempt={citizen.Attempts}, carrying={citizen.Carrying}, " +
                                 $"completed={citizen.CompletedTasks}, failed={citizen.FailedTasks}; {citizen.LastResult}");
+                WriteGoal(shell, uid);
                 break;
             default:
                 shell.WriteError(Help);

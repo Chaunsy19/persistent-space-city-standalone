@@ -3,6 +3,7 @@ using Content.IntegrationTests.Fixtures;
 using Content.IntegrationTests.Fixtures.Attributes;
 using Content.Shared.CCVar;
 using Content.Server._SpaceCity.Citizens;
+using Content.Server._SpaceCity.Work;
 using Content.Server.NPC.Components;
 using Content.Shared.Access.Components;
 using Content.Shared.Access.Systems;
@@ -24,7 +25,7 @@ namespace Content.IntegrationTests.Tests._SpaceCity;
 
 /// <summary>Real server HTN/steering/physics/hands, with no attached player driving the citizen.</summary>
 [TestFixture]
-public sealed class CitizenTests : GameTest
+public sealed partial class CitizenTests : GameTest
 {
     public override PoolSettings PoolSettings => new() { Connected = false };
 
@@ -305,8 +306,9 @@ public sealed class CitizenTests : GameTest
         await Server.WaitPost(() => Server.System<SharedMapSystem>().DeleteMap(map.MapId));
     }
 
-    [Test]
-    public async Task TwoClientsObserveTheSameDelivery()
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task TwoClientsObserveTheSameDelivery(bool autonomous)
     {
         var map = await Arena();
         await Pair.Connect();
@@ -349,7 +351,17 @@ public sealed class CitizenTests : GameTest
         });
         for (var i = 0; i < 20; i++)
             await Pump(5);
-        await Server.WaitAssertion(() => Assert.That(Server.System<SpaceCityCitizenSystem>().Assign(citizen, destination, item, out var reason), Is.True, reason));
+        EntityUid orderUid = default;
+        await Server.WaitAssertion(() =>
+        {
+            if (autonomous)
+            {
+                Server.System<SpaceCityGoalSelectorSystem>().SetEnabled(citizen, true);
+                Assert.That(Server.System<SpaceCityWorkOrderSystem>().TryCreate(item, destination, 2, out orderUid, out var reason), Is.True, reason);
+            }
+            else
+                Assert.That(Server.System<SpaceCityCitizenSystem>().Assign(citizen, destination, item, out var reason), Is.True, reason);
+        });
 
         var held = new bool[2];
         var opened = new bool[2];
@@ -377,6 +389,8 @@ public sealed class CitizenTests : GameTest
         }
 
         await Server.WaitAssertion(() => Assert.That(SEntMan.GetComponent<SpaceCityCitizenComponent>(citizen).CompletedTasks, Is.EqualTo(1)));
+        if (autonomous)
+            await Server.WaitAssertion(() => Assert.That(SEntMan.GetComponent<SpaceCityWorkOrderComponent>(orderUid).Status, Is.EqualTo(SpaceCityWorkStatus.Completed)));
         for (var index = 0; index < 2; index++)
         {
             Assert.That(held[index], Is.True, $"Client {index} never received held-item state");

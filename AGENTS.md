@@ -2,7 +2,7 @@
 
 Read `docs/space-city/DEVELOPMENT_LOG.md`, `ARCHITECTURE.md`, and `ROADMAP.md` before work. This directory is the actual game Git repository; the parent workspace has a separate, pre-existing empty repository.
 
-- Develop only the approved milestone. Milestone 1 (first autonomous humanoid) is authorized; do not begin Milestone 2, merge branches, or publish new work without owner approval. See `docs/space-city/MILESTONE_1.md` for current testing instructions.
+- Develop only the approved milestone. Milestone 2.1 (autonomous goal selection and delivery work discovery) is authorized on `codex/milestone-2.1`; do not begin Milestone 2.2, merge branches, or publish new work without owner approval. See `docs/space-city/MILESTONE_2_1.md` for current testing instructions.
 - Preserve upstream functionality and use SS14 ECS components, systems, prototypes, events, and existing interaction APIs.
 - Put future custom code under `Content.Server/_SpaceCity`, `Content.Shared/_SpaceCity`, and `Content.Client/_SpaceCity`; custom resources under matching `_SpaceCity` resource directories. Create these only when needed.
 - NPC decisions and world changes are authoritative on the server. Shared state/events must follow existing networking conventions and validate player requests.

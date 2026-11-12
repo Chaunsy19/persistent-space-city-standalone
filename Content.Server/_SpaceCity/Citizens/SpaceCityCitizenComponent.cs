@@ -35,4 +35,17 @@ public enum CitizenActivity : byte
     Stopped,
 }
 
-public readonly record struct CitizenTask(EntityUid Destination, EntityUid? Item);
+public readonly record struct CitizenTask(EntityUid Destination, EntityUid? Item, EntityUid? WorkOrder = null);
+
+public enum CitizenTaskOutcome : byte { Completed, Failed, Cancelled }
+
+/// <summary>Execution outcomes are published after cleanup and clearing the task state.</summary>
+[ByRefEvent]
+public readonly record struct CitizenTaskResolvedEvent(CitizenTask Task, CitizenTaskOutcome Outcome, string Reason);
+
+/// <summary>Raised only for a validated manual assignment, before it enters the queue.</summary>
+[ByRefEvent]
+public readonly record struct CitizenManualTaskEvent;
+
+[ByRefEvent]
+public readonly record struct CitizenRemovedEvent;

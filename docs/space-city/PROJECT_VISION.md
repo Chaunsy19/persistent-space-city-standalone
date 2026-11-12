@@ -16,4 +16,4 @@ Humanoid citizens; needs and schedules; service, medical, engineering, cargo, an
 
 ## Current boundary
 
-Milestone 0 established the environment and architecture. The authorized Milestone 1 adds one bounded autonomous humanoid delivery demo using existing HTN, navigation and hands mechanics. Professions, custom needs/schedules, economy and persistence remain future milestones. See `ROADMAP.md`; do not begin Milestone 2 without approval.
+Milestone 0 established the environment and architecture. Milestone 1 adds bounded humanoid delivery using existing HTN, navigation and hands mechanics. Authorized Milestone 2.1 adds autonomous discovery and exclusive claiming of prioritized administrative delivery orders. Professions, custom needs/schedules, economy and persistence remain future milestones. See `ROADMAP.md`; do not begin Milestone 2.2 without approval.
