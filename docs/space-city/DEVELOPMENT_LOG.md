@@ -1,4 +1,6 @@
-# Milestone 0 development log
+# Development log
+
+Current status: Milestone 1 implemented and verified on `codex/milestone-1`. The earlier Milestone 0 entries below are historical. See `MILESTONE_1.md` for current spawn/test instructions. Milestone 2 and merging remain unapproved.
 
 Current repository: [Chaunsy19/persistent-space-city-standalone](https://github.com/Chaunsy19/persistent-space-city-standalone), an independent repository with default branch `main`. The original setup record below describes the earlier fork; see the independence update at the end for current Git and launch instructions.
 
@@ -87,7 +89,7 @@ Changes: `.gitignore` (local runtime data only), `AGENTS.md`, `docs/space-city/P
 
 Recommended next action: review these notes, then explicitly approve Milestone 1. Its first increment should be one server-controlled humanoid that navigates through an authorized door and performs a real item interaction using existing HTN, with clear blocked-path/cancellation behavior. Verify it from two clients before expanding to needs or professions. Do not start that implementation automatically.
 
-## Milestone 0 update — standalone ownership and project identity
+## Milestone 0 update â€” standalone ownership and project identity
 
 Authorized by the owner on 2026-11-11 after reviewing the independence recommendation. Created `Chaunsy19/persistent-space-city-standalone` as a new public repository, preserving `Chaunsy19/persistent-space-city` without modification. GitHub reports `fork: false` and no parent. Local `origin` points exclusively to the standalone repository; the content `upstream` remote was removed. `main` is the project branch and `milestone-0` identifies the completed foundation. Source history and the original Milestone 0 commit remain in ancestry.
 
@@ -95,8 +97,31 @@ Updated README, contribution guidelines, GitHub CODEOWNERS and issue/PR template
 
 Verification: both PowerShell scripts parsed successfully; Python TOML validation confirmed project links and local-only settings; full solution rebuild passed with **896 warnings, zero errors**, elapsed **00:00:44.07**. An initial rebuild failed because the original test server held DLLs open; its exact executable path was verified before stopping it, then the rebuild passed. No source/compiler errors remained.
 
-Executed both new launch scripts against isolated test data on loopback port 1213, overriding both game port and status binding. Server reached Ready; `/status` reported `Persistent Space City — Development`; `/info` exposed the standalone repository/documentation links. OS socket queries verified both UDP and TCP listeners were `127.0.0.1:1213`. The headless verification client received a full game state, reached InGame and attached to a player entity. This update did not repeat graphical rendering verification; window-title configuration was checked directly, while the original milestone includes a graphical connection test.
+Executed both new launch scripts against isolated test data on loopback port 1213, overriding both game port and status binding. Server reached Ready; `/status` reported `Persistent Space City â€” Development`; `/info` exposed the standalone repository/documentation links. OS socket queries verified both UDP and TCP listeners were `127.0.0.1:1213`. The headless verification client received a full game state, reached InGame and attached to a player entity. This update did not repeat graphical rendering verification; window-title configuration was checked directly, while the original milestone includes a graphical connection test.
 
 Local evidence: `milestone0-independence-build.log` (initial lock failure), `milestone0-independence-build-retry.log` (successful rebuild), `milestone0-independence-server.log` and `milestone0-independence-client.log`. These remain ignored. Temporary verification processes were stopped after testing; use the new scripts for the next normal development session. No production hosting or gameplay milestone was started.
 
 A final documentation follow-up adapted `CODE_OF_CONDUCT.md` to project ownership and moderation routing, preserving its original Django/SS14 attribution. This follow-up changes no executable code or configuration; build/connection results above remain applicable.
+
+## Milestone 1 â€” first autonomous humanoid (2026-11-11)
+
+Owner explicitly authorized the supplied Milestone 1 brief. Before gameplay edits, verified a clean working tree and that completed Milestone 0 commit `098c17870765388d452377beedbb8382e5d9fbe3` exactly matched standalone `origin/main`; no additional foundation push was needed. Created `codex/milestone-1` from that commit. Kept the standalone origin despite the older fork URL appearing in the brief. No merge, history rewrite or Milestone 2 work occurred.
+
+Implemented a `MobCivilian`/`MobHuman`-derived Space City Citizen, ordinary human appearance/loadout and passenger ID, an HTN root, a server-only bounded delivery coordinator and component, and `spacecity` Debug admin commands for spawning, queuing, status, stop and reset. The prototype file also contains a normal crowbar-derived test item and destination marker using existing art. Reused HTN scheduling, NPC steering/pathfinding, collision/movement, doors/access and normal hands/container replication. A small coordinator provides bounded failure, task state/postconditions and reach/access checks absent from a bare generic pickup operator. It adds no general AI framework or engine change.
+
+Files created: `Content.Server/_SpaceCity/Citizens/{SpaceCityCitizenComponent,SpaceCityCitizenSystem,SpaceCityCitizenOperator,SpaceCityCitizenCommand}.cs`; `Resources/Prototypes/_SpaceCity/citizen.yml`; `Content.IntegrationTests/Tests/_SpaceCity/CitizenTests.cs`; `docs/space-city/MILESTONE_1.md`. Updated architecture/roadmap/vision, this log, README and AGENTS for the approved scope and current behavior.
+
+Verification performed:
+
+- Full nonincremental `dotnet build SpaceStation14.slnx --no-restore --no-incremental`: success, **1,012 warnings, 0 errors**, elapsed **00:00:54.48**. The original Milestone 0 full build had 1,025 warnings. Normalized unique warning location/code/message sets contained no new warnings; `_SpaceCity` files introduce no warnings. This does not claim the existing dependency/obsolete API warnings were repaired. Earlier compile-time issues found during development were corrected before final verification.
+- Final focused integration run: **5 passed, 0 failed, 0 skipped** in 16 seconds. Exercises actual simulation, not mocked pathfinding: zero-player real pickup/delivery/drop around a solid wall; authorized door; denied door with bounded failure and subsequent reachable queued work; queue bound/stop/reset/target deletion/citizen deletion; two independent clients receiving consistent movement, doors, held-item, drop and clothing states from one server.
+- Initial navigation fixture failures revealed that the shared test harness sets `pathfinding.enabled=false`. The fixture enables it explicitly and checks navmesh availability; ordinary runtime defaults remain unchanged. Tests also configure inherent gravity and a power-independent test airlock with its actual access-reader source specified. The first two-client run reached its assertions but reported a dirty test-pool disposal warning; corrected cleanup and confirmed a subsequent run had no skips.
+- Launched the local server and two graphical clients. Both reached InGame; inspected each view. The live spawn command produced normal humanoids; live delivery picked up/carried/dropped an actual test item, returning to idle with completed=1 and failed=0. Also assigned another delivery and exercised live status/stop/reset. Automated client replica assertions cover transient hand/door/movement states more thoroughly than the graphical snapshots.
+- An automation-only pseudo-terminal/stdout-redirection combination caused an engine console `WindowWidth` invalid-handle crash when sending input. Retried with a proper interactive console and succeeded. No RobustToolbox change or exception suppression was introduced. This limitation and normal launch instructions are documented.
+- The final live two-client session emitted late `MsgEntity`/collision warnings with the inherited Debug fake-lag configuration; the second live delivery still completed (completed=2, failed=0). These are recorded as a limit on the smoke test, not silently treated as a clean latency/soak result.
+
+Build/test/client/observation logs are ignored local evidence; final TRX is under ignored `Content.IntegrationTests/TestResults/`; the live server file log is under ignored `bin/Content.Server/logs/`. Verification processes were stopped at handoff. Full population/soak testing, arbitrary workstation use, multi-grid navigation and persistence were not attempted.
+
+Known limits: same-grid explicit targets, bounded queue, retained held item on cancellation/failure, no reservations, no automatic resumption after player takeover, and configurable progress/deadline thresholds that may reject crowded or very slow routes. Ordinary physiology remains inherited from the humanoid prototype; no new needs model was introduced. Detailed behavior, admin commands and manual visual rechecks are in `MILESTONE_1.md`.
+
+Milestone 1 completion criteria are verified. Commit the work to the Milestone 1 development branch only; publication/merge and Milestone 2 require the owner's instructions. Recommended Milestone 2: a minimal citizen identity/needs/schedule selector that reuses the tested execution path, keeping professions and persistence deferred.

@@ -16,4 +16,4 @@ Humanoid citizens; needs and schedules; service, medical, engineering, cargo, an
 
 ## Current boundary
 
-Milestone 0 establishes the development environment and architectural evidence only. No citizen gameplay, economy, custom NPC framework, persistence implementation, or engine modification is introduced. See `ROADMAP.md` for subsequent milestones, each requiring approval before starting.
+Milestone 0 established the environment and architecture. The authorized Milestone 1 adds one bounded autonomous humanoid delivery demo using existing HTN, navigation and hands mechanics. Professions, custom needs/schedules, economy and persistence remain future milestones. See `ROADMAP.md`; do not begin Milestone 2 without approval.

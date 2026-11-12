@@ -2,7 +2,7 @@
 
 An independent multiplayer space-city simulation based on Space Station 14 and RobustToolbox. Players inhabit individual characters alongside autonomous citizens in a functioning society. This is not a colony-management game.
 
-**Status: Milestone 0 — development foundation complete.** Citizen behavior and world persistence are planned features, not implemented yet. Milestone 1 requires owner approval.
+**Status: Milestone 1 — first autonomous humanoid implemented on `codex/milestone-1`.** The citizen demonstrates bounded navigation and real item delivery. Professions, custom needs, schedules and persistence remain future work. See [Milestone 1 testing instructions](docs/space-city/MILESTONE_1.md).
 
 ## Project
 
